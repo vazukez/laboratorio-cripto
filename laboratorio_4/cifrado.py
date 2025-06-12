@@ -19,14 +19,15 @@ def ajustar_iv(iv, tamaño_requerido):
         iv_bytes = iv_bytes[:tamaño_requerido]
     return iv_bytes
 
-def cifrar_descifrar(mensaje, clave, iv, algoritmo):
+def cifrar(texto, clave, iv, algoritmo, tamaño_clave_3des=None):
     if algoritmo == "DES":
         key = ajustar_clave(clave, 8)
         iv = ajustar_iv(iv, 8)
         cipher = DES.new(key, DES.MODE_CBC, iv)
     elif algoritmo == "3DES":
-        key = ajustar_clave(clave, 24)
-        key = DES3.adjust_key_parity(key)  # Necesario para 3DES
+        key_size = 16 if tamaño_clave_3des == 16 else 24
+        key = ajustar_clave(clave, key_size)
+        key = DES3.adjust_key_parity(key)
         iv = ajustar_iv(iv, 8)
         cipher = DES3.new(key, DES3.MODE_CBC, iv)
     elif algoritmo == "AES":
@@ -36,34 +37,68 @@ def cifrar_descifrar(mensaje, clave, iv, algoritmo):
     else:
         raise ValueError("Algoritmo no válido.")
 
-    # Cifrado
-    texto_padded = pad(mensaje.encode(), cipher.block_size)
-    texto_cifrado = cipher.encrypt(texto_padded)
-    texto_cifrado_b64 = base64.b64encode(texto_cifrado).decode()
+    texto_padded = pad(texto.encode(), cipher.block_size)
+    cifrado = cipher.encrypt(texto_padded)
+    return base64.b64encode(cifrado).decode(), key, iv
 
-    # Descifrado
-    cipher_dec = None
+def descifrar(texto_b64, clave, iv, algoritmo, tamaño_clave_3des=None):
+    texto_cifrado = base64.b64decode(texto_b64)
+    
     if algoritmo == "DES":
-        cipher_dec = DES.new(key, DES.MODE_CBC, iv)
+        key = ajustar_clave(clave, 8)
+        iv = ajustar_iv(iv, 8)
+        cipher = DES.new(key, DES.MODE_CBC, iv)
     elif algoritmo == "3DES":
-        cipher_dec = DES3.new(key, DES3.MODE_CBC, iv)
+        key_size = 16 if tamaño_clave_3des == 16 else 24
+        key = ajustar_clave(clave, key_size)
+        key = DES3.adjust_key_parity(key)
+        iv = ajustar_iv(iv, 8)
+        cipher = DES3.new(key, DES3.MODE_CBC, iv)
     elif algoritmo == "AES":
-        cipher_dec = AES.new(key, AES.MODE_CBC, iv)
+        key = ajustar_clave(clave, 32)
+        iv = ajustar_iv(iv, 16)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+    else:
+        raise ValueError("Algoritmo no válido.")
 
-    descifrado = unpad(cipher_dec.decrypt(base64.b64decode(texto_cifrado_b64)), cipher_dec.block_size).decode()
+    descifrado = unpad(cipher.decrypt(texto_cifrado), cipher.block_size)
+    return descifrado.decode(), key, iv
 
-    print(f"\n[{algoritmo}]")
-    print(f"Clave final usada (hex): {key.hex()}")
-    print(f"IV usado (hex): {iv.hex()}")
-    print(f"Texto cifrado (Base64): {texto_cifrado_b64}")
-    print(f"Texto descifrado: {descifrado}")
+# === MENÚ DE USUARIO ===
+print("Seleccione una operación:")
+print("1. Cifrar texto")
+print("2. Descifrar texto")
+op = input("Opción (1 o 2): ")
 
-# Entrada del usuario
-clave = input("Ingrese la clave: ")
+print("\nSeleccione el algoritmo:")
+print("1. DES")
+print("2. 3DES")
+print("3. AES-256")
+algoritmo_op = input("Opción (1, 2 o 3): ")
+
+algoritmo = {"1": "DES", "2": "3DES", "3": "AES"}[algoritmo_op]
+tamaño_clave_3des = None
+
+if algoritmo == "3DES":
+    tipo = input("¿Desea usar 2 claves (16 bytes) o 3 claves (24 bytes)? (Ingrese 16 o 24): ")
+    tamaño_clave_3des = 16 if tipo == "16" else 24
+
+clave = input("\nIngrese la clave: ")
 iv = input("Ingrese el IV: ")
-mensaje = input("Ingrese el texto a cifrar: ")
 
-# Ejecutar para los tres algoritmos
-cifrar_descifrar(mensaje, clave, iv, "DES")
-cifrar_descifrar(mensaje, clave, iv, "3DES")
-cifrar_descifrar(mensaje, clave, iv, "AES")
+if op == "1":
+    mensaje = input("Ingrese el texto a cifrar: ")
+    texto_cifrado, key_final, iv_final = cifrar(mensaje, clave, iv, algoritmo, tamaño_clave_3des)
+    print(f"\n[{algoritmo}] Cifrado")
+    print(f"Clave final usada (hex): {key_final.hex()}")
+    print(f"IV usado (hex): {iv_final.hex()}")
+    print(f"Texto cifrado (Base64): {texto_cifrado}")
+elif op == "2":
+    mensaje = input("Ingrese el texto cifrado (Base64): ")
+    texto_descifrado, key_final, iv_final = descifrar(mensaje, clave, iv, algoritmo, tamaño_clave_3des)
+    print(f"\n[{algoritmo}] Descifrado")
+    print(f"Clave final usada (hex): {key_final.hex()}")
+    print(f"IV usado (hex): {iv_final.hex()}")
+    print(f"Texto descifrado: {texto_descifrado}")
+else:
+    print("Opción no válida.")
