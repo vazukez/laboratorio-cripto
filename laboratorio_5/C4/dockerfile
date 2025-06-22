@@ -1,0 +1,13 @@
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y openssh-server openssh-client iputils-ping net-tools
+
+
+RUN useradd -m prueba && echo 'prueba:prueba' | chpasswd
+
+
+RUN mkdir /var/run/sshd
+
+EXPOSE 22
+
+CMD ["/usr/sbin/sshd", "-D"]

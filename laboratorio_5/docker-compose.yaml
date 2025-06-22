@@ -1,0 +1,41 @@
+services:
+  c1:
+    build: ./C1
+    container_name: c1
+    tty: true
+    networks:
+      - red_lab
+
+  c2:
+    build: ./C2
+    container_name: c2
+    tty: true
+    networks:
+      - red_lab
+
+  c3:
+    build: ./C3
+    container_name: c3
+    tty: true
+    networks:
+      - red_lab
+
+  s1:
+    build: ./C4
+    container_name: s1
+    tty: true
+    ports:
+      - "2222:22"
+    networks:
+      - red_lab
+
+  c4:
+    build: ./C4
+    container_name: c4
+    tty: true
+    networks:
+      - red_lab
+
+networks:
+  red_lab:
+    driver: bridge
